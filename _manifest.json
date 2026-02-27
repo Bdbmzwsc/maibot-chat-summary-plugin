@@ -1,0 +1,25 @@
+{
+  "manifest_version": 1,
+  "name": "聊天总结",
+  "version": "1.0.0",
+  "description": "根据聊天记录，生成聊天总结",
+  "author": {
+    "name": "雪碧",
+    "url": "https://github.com/Bdbmzwsc"
+  },
+  "homepage_url": "https://github.com/Bdbmzwsc/maibot-chat-summary-plugin",
+  "repository_url": "https://github.com/HyperSharkawa/maibot-chat-summary-plugin",
+  "license": "GPLv3",
+  "host_application": {
+    "min_version": "0.12.0"
+  },
+  "keywords": [
+    "分析"
+  ],
+  "categories": [
+    "Data Analysis & Insights"
+  ],
+  "default_locale": "CN",
+  "locales_path": "_locales",
+  "id": "bdbmzwsc.maibot-character-sketch-plugin"
+}
