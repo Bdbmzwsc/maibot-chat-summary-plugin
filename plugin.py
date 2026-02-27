@@ -149,9 +149,9 @@ class ChatSummaryPlugin(BasePlugin):
             permission_mode = "blacklist"
         if permission_mode == "whitelist" and not user_id_list:
             logger.warning("权限模式为白名单，但用户ID列表为空，这将导致没有用户可以使用插件功能！")
-        PortrayalCommand.permission_mode = permission_mode
-        PortrayalCommand.user_id_list = user_id_list
-        PortrayalCommand.admin_id_list = admin_id_list
+        ChatSummaryCommand.permission_mode = permission_mode
+        ChatSummaryCommand.user_id_list = user_id_list
+        ChatSummaryCommand.admin_id_list = admin_id_list
         return [
             (ChatSummaryCommand.get_command_info(), ChatSummaryCommand),
         ]

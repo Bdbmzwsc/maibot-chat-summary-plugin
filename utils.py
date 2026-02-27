@@ -83,7 +83,8 @@ async def prepare_summary_messages(
             if key in text:
                 text = pat.sub("", text)
         text = text.strip()
-        if not text: continue
+        if not text: 
+            continue
         if 0 < max_message_length < len(text):
             text = text[:max_message_length] + "......[由于消息过长，后续消息已被截断]"
         time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(message.time))

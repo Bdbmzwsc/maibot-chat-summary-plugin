@@ -25,9 +25,8 @@ class ChatSummaryCommand(BaseCommand):
     command_name = "总结"
     command_description = "根据用户的聊天记录生成总结"
     # === 命令设置（必须填写）===
-    command_pattern = r"^/总结$"
+    command_pattern = r"^/总结(?:\s+(?P<count>\d+))?$"
 
-    #command_pattern = r"^/总结(\s*(?P<name>\S+))?(\s+(?P<chat_id>\S+))?"
 
 
     permission_mode: str = "blacklist"
@@ -61,9 +60,10 @@ class ChatSummaryCommand(BaseCommand):
                 logger.error(f"未找到可用的 {llm_group} 模型配置")
                 return False, f"未找到可用的 {llm_group} 模型配置", 1
         if not prompt_template:
+            
             logger.error("总结提示词为空")
             return False, "总结提示词为空", 1
-        stream_id = await self.get_chat_id()
+        stream_id = self.get_chat_id()
         logger.debug(f"聊天流ID: {stream_id}")
 
         start_time = time.time() - 24 * 3600 * 30
@@ -71,15 +71,12 @@ class ChatSummaryCommand(BaseCommand):
         if not stream_id and not is_admin:
             # 如果没有指定聊天流ID，则将会搜索所有聊天流中该用户的消息 该功能仅限管理员使用
             await self.send_text("你没有使用该参数的权限")
-            return True, f"", 1
+            return True, "", 1
         if stream_id != self.message.chat_stream.stream_id and not is_admin:
             await self.send_text("你没有使用该参数的权限")
-            return True, f"", 1
-        retrieval_message_count = self.get_config("chat_summary_plugin.retrieval_message_count",
-                                                  50000)
-        context_length = self.get_config("chat_summary_plugin.context_length", 10)
-        context_length_after = self.get_config("chat_summary_plugin.context_length_after", 3)
-        max_message_count = self.get_config("chat_summary_plugin.max_message_count", 500)
+            return True, "", 1
+        retrieval_message_count = self.get_config("chat_summary_plugin.retrieval_message_count",50000)
+        max_message_count = self.get_limit()
         max_message_length = self.get_config("chat_summary_plugin.max_message_length", 200)
 
         # 获取用户在指定聊天流中的消息记录
@@ -87,7 +84,7 @@ class ChatSummaryCommand(BaseCommand):
                                                   retrieval_message_count)
         retrieval_message_count = len(messages)
         # 过滤出总结对象的消息和上下文消息
-        messages = filter_messages_with_context(messages, max_message_count * 2)
+        messages = filter_messages_with_context(messages, max_message_count)
         # 删除对总结生成无用的信息并整理消息内容为字符串列表
         lines, user_count = await prepare_summary_messages(
             messages,
@@ -98,11 +95,11 @@ class ChatSummaryCommand(BaseCommand):
             max_message_length=max_message_length
         )
         if not messages:
-            await self.send_text(f"未找到消息记录，无法生成总结。")
-            return True, f"", 1
+            await self.send_text("未找到消息记录，无法生成总结。")
+            return True, "", 1
         if not lines:
-            await self.send_text(f"未找到有效的消息内容，无法生成总结。")
-            return True, f"", 1
+            await self.send_text("未找到有效的消息内容，无法生成总结。")
+            return True, "", 1
 
         await self.send_text(
             f"使用了 {len(lines)} 条消息。正在生成总结，请稍候...")
@@ -114,7 +111,7 @@ class ChatSummaryCommand(BaseCommand):
         success, response, _, _ = await llm_api.generate_with_model(prompt, model_config=model_config)
         if not success:
             logger.error(f"模型响应失败: {response}")
-            return False, f"", 1
+            return False, "", 1
 
         message_body: Tuple[str, str] = ("text", response)
         message: Tuple[str, str, List[Tuple[str, str]]] = (
@@ -122,15 +119,16 @@ class ChatSummaryCommand(BaseCommand):
         )
         await self.send_forward([message])
 
-        return True, f"", 1
+        return True, "", 1
 
-    async def get_chat_id(self) -> str:
+    def get_chat_id(self) -> str:
         """
         获取聊天流ID
         returns: str: 聊天流ID
         """
         chat_id = self.matched_groups.get("chat_id", "")
-        if isinstance(chat_id, str): chat_id = chat_id.strip()
+        if isinstance(chat_id, str): 
+            chat_id = chat_id.strip()
         if not chat_id:
             logger.debug(f"未指定聊天流ID，使用当前聊天流ID: {self.message.chat_stream.stream_id}")
             chat_id = self.message.chat_stream.stream_id
@@ -146,3 +144,15 @@ class ChatSummaryCommand(BaseCommand):
             else:
                 chat_id = stream_id
         return chat_id
+    def get_limit(self) -> int:
+        """
+        获取限制
+        returns: int: 限制
+        """
+        count = self.matched_groups.get("count", "")
+        if isinstance(count, str): 
+            count = count.strip()
+        if not count:
+            logger.debug(f"未指定限制，使用默认限制: {self.get_config('chat_summary_plugin.max_message_count', 500)}")
+            return self.get_config("chat_summary_plugin.max_message_count", 500)
+        return int(count)
